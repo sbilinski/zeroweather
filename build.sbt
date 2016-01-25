@@ -40,6 +40,16 @@ lazy val proxy     = project.in(file("proxy"))
                               mainClass in Revolver.reStart := Some("zeroweather.proxy.Proxy")
                             )
                             .dependsOn(message)
+                            .settings(
+                              libraryDependencies ++= {
+                                val akkaStreamVersion = "2.0.2"
+                                Seq(
+                                  "com.typesafe.akka" %% "akka-http-experimental"             % akkaStreamVersion,
+                                  "com.typesafe.akka" %% "akka-http-spray-json-experimental"  % akkaStreamVersion,
+                                  "com.typesafe.akka" %% "akka-http-testkit-experimental"     % akkaStreamVersion % "test"
+                                )
+                              }
+                            )
 
 lazy val supplier  = project.in(file("supplier"))
                             .settings(commonSettings: _*)
@@ -49,5 +59,13 @@ lazy val supplier  = project.in(file("supplier"))
                               mainClass in Revolver.reStart := Some("zeroweather.supplier.Supplier")
                             )
                             .dependsOn(message)
+                            .settings(
+                              libraryDependencies ++= {
+                                Seq(
+                                  "com.typesafe.akka" %% "akka-actor" % "2.4.1"
+                                )
+                              }
+                            )
+
 
 lazy val root      = project.in(file(".")).aggregate(message, proxy, supplier)
