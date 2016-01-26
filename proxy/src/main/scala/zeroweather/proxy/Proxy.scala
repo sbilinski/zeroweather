@@ -9,6 +9,7 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.ExceptionHandler
 import akka.stream.{ Materializer, ActorMaterializer }
+import com.typesafe.config.{ Config, ConfigFactory }
 import spray.json.DefaultJsonProtocol
 import zeroweather.message.Weather
 
@@ -55,5 +56,7 @@ object Proxy extends App with Service {
 
   override val supplierConnector = new SupplierConnector {}
 
-  Http().bindAndHandle(routes, "0.0.0.0", 8080)
+  val config = ConfigFactory.load()
+
+  Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
 }
