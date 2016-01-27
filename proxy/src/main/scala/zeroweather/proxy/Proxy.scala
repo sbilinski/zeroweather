@@ -2,18 +2,17 @@ package zeroweather.proxy
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.ExceptionHandler
-import akka.stream.{ Materializer, ActorMaterializer }
-import com.typesafe.config.{ Config, ConfigFactory }
-import spray.json.DefaultJsonProtocol
+import akka.stream.{ ActorMaterializer, Materializer }
+import spray.json._
 import zeroweather.message.Weather
 
-import scala.concurrent.{ ExecutionContextExecutor, Future }
+import scala.concurrent.ExecutionContextExecutor
 
 trait Protocols extends DefaultJsonProtocol {
   implicit val weatherFormat = jsonFormat4(Weather.apply)
@@ -39,7 +38,7 @@ trait Service extends Protocols {
         get {
           complete {
             supplierConnector.fetchWeather(countryCode, city).map[ToResponseMarshallable] {
-              case Right(temperature) => temperature
+              case Right(weather) => weather
               case Left(error) => BadRequest -> error
             }
           }
@@ -49,14 +48,10 @@ trait Service extends Protocols {
   }
 }
 
-object Proxy extends App with Service {
+object Proxy extends App with Service with Supplier with Configuration {
   override implicit val system = ActorSystem("Proxy")
   override implicit val executor = system.dispatcher
   override implicit val materializer = ActorMaterializer()
-
-  override val supplierConnector = new SupplierConnector {}
-
-  val config = ConfigFactory.load()
 
   Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
 }
