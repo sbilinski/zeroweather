@@ -4,7 +4,7 @@
 
 ## Overview
 
-**TODO**: application layout image
+![Application layout](/doc/zeromq_application_layout.png)
 
 ## Basic ZeroMQ concepts
 
