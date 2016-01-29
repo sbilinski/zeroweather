@@ -24,7 +24,6 @@ import org.zeromq.ZMQ.{ Socket, Context }
 
 import scala.util.Try
 
-@org.scalatest.Ignore
 class ZeroMQSocketRunnableSpec extends FunSpec with Matchers
     with MockitoSugar with Eventually with BeforeAndAfter {
 

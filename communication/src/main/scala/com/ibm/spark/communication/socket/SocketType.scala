@@ -21,11 +21,12 @@ import org.zeromq.ZMQ
  * Represents the type option used to indicate the type of socket to create.
  *
  * @param `type` The type as an integer
+ * @param inboundMessages A flag specifying if the socket can handle inbound messages
  */
-sealed class SocketType(val `type`: Int)
+sealed class SocketType(val `type`: Int, val inboundMessages: Boolean = true)
 
 /** Represents a publish socket. */
-case object PubSocket extends SocketType(ZMQ.PUB)
+case object PubSocket extends SocketType(ZMQ.PUB, inboundMessages = false)
 
 /** Represents a subscribe socket. */
 case object SubSocket extends SocketType(ZMQ.SUB)

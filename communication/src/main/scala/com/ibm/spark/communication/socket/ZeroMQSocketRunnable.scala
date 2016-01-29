@@ -145,9 +145,11 @@ class ZeroMQSocketRunnable(
         Try(processNextOutboundMessage(socket)).failed.foreach(
           logger.error("Failed to send next outgoing message!", _: Throwable)
         )
-        Try(processNextInboundMessage(socket)).failed.foreach(
-          logger.error("Failed to retrieve next incoming message!", _: Throwable)
-        )
+        if (socketType.inboundMessages) {
+          Try(processNextInboundMessage(socket)).failed.foreach(
+            logger.error("Failed to retrieve next incoming message!", _: Throwable)
+          )
+        }
         Thread.sleep(1)
       }
     } catch {

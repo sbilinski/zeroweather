@@ -6,4 +6,4 @@ module.
 * All `com.ibm.spark.utils.LogLike` references were replaced by `com.typesafe.scalalogging.LazyLogging`
 * All `KernelMessage` references were removed.
 * All `security` components were removed.
-* `ZeroMQSocketRunnableSpec` is marked with `@Ignore` for now
+* Fixed inbound message processing for the `PUB` socket.
