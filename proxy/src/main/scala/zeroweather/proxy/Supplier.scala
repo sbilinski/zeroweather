@@ -1,96 +1,72 @@
 package zeroweather.proxy
 
-import org.zeromq.ZMQ
-import org.zeromq.ZMQ.{ Poller, PollItem }
-import zeroweather.message.{ WeatherRequested, Weather }
+import java.util.Base64
 
-import scala.annotation.tailrec
-import scala.concurrent.{ ExecutionContextExecutor, Future }
+import akka.actor._
+import akka.pattern.ask
+import akka.util.{ ByteString, Timeout }
+import com.ibm.spark.communication.ZMQMessage
+import com.ibm.spark.communication.actors.DealerSocketActor
+import org.velvia.msgpack._
+import zeroweather.message.{ Weather, WeatherRequested }
+
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import org.velvia.msgpack._
 
 trait SupplierConnector {
   def fetchWeather(countryCode: String, city: String): Future[Either[String, Weather]]
 }
 
-/**
- * A Scala implementation of the lazy-pirate pattern (based on http://zguide.zeromq.org/java:lpclient)
- */
-trait ZeroMQLazyPirate {
-  private type Interrupted = Boolean
+class ZeroMQSupplierConnector(system: ActorSystem, val endpoint: String) extends SupplierConnector {
 
-  val context: ZMQ.Context
-  val endpoint: String
-  val requestTimeout = 2500 milliseconds
+  implicit val timeout = Timeout(2 seconds)
 
-  def send(request: Array[Byte], retries: Int = 5): Array[Byte] = {
-    lazy val socket = {
-      val s = context.socket(ZMQ.REQ)
-      s.connect(endpoint)
-      s
-    }
+  override def fetchWeather(countryCode: String, city: String): Future[Either[String, Weather]] = {
+    val dealer = system.actorOf(Props(classOf[DealerActor], endpoint))
 
-    try {
-      sendAndPoll(socket, request, retries)
-    } finally {
-      socket.close()
-    }
-  }
-
-  @tailrec
-  private def sendAndPoll(socket: ZMQ.Socket, request: Array[Byte], retriesLeft: Int): Array[Byte] = {
-    if (retriesLeft >= 0 && !Thread.currentThread().isInterrupted) {
-      socket.send(request)
-      poll(socket) match {
-        case (_, Some(response)) => response
-        case (true, None) => sendAndPoll(socket, request, retriesLeft)
-        case (false, None) => {
-          //TODO: Reopen socket?
-          sendAndPoll(socket, request, retriesLeft - 1)
-        }
-      }
-    } else {
-      throw new java.io.IOException("Failed to process request. Retry limit exhausted.")
-    }
-  }
-
-  private def poll(socket: ZMQ.Socket): (Interrupted, Option[Array[Byte]]) = {
-    val pollItem = new PollItem(socket, Poller.POLLIN)
-    ZMQ.poll(Array(pollItem), requestTimeout.toMillis) match {
-      case -1 => {
-        //Interrupted
-        (true, None)
-      }
-      case _ => {
-        if (pollItem.isReadable) {
-          val response = socket.recv()
-          if (response == null) {
-            //Interrupted
-            (true, None)
-          } else {
-            //TODO: Check if message sequence matches?
-            (false, Some(response))
-          }
-        } else {
-          (false, None)
-        }
-
-      }
-    }
+    (dealer ? WeatherRequested(countryCode, city)).mapTo[Either[String, Weather]]
   }
 
 }
 
-class ZeroMQSupplierConnector(ioThreads: Int, val endpoint: String)(implicit executor: ExecutionContextExecutor) extends SupplierConnector with ZeroMQLazyPirate {
+class DealerActor(endpoint: String) extends Actor with ActorLogging {
+  val dealerSocket = context.actorOf(Props(classOf[DealerSocketActor], endpoint, self))
 
-  val context = ZMQ.context(ioThreads)
+  def receive = awaitingRequest
 
-  override def fetchWeather(countryCode: String, city: String): Future[Either[String, Weather]] = Future {
-    val request = pack(WeatherRequested(countryCode, city))
-    val response = send(request)
+  def awaitingRequest: Receive = {
+    case wr: WeatherRequested => {
+      log.debug("Weather requested: {}", wr)
 
-    Right(unpack[Weather](response))
+      //FIXME: Remove BASE64 encoding & add proper String conversion or send in binary format (msgpack)
+      val payload = {
+        val serialized = pack(wr)
+        val base64 = Base64.getEncoder().encode(serialized)
+        ByteString.fromArray(base64)
+      }
+
+      dealerSocket ! ZMQMessage(payload)
+
+      context.become(awaitingResponse(sender, wr))
+    }
+  }
+
+  def awaitingResponse(client: ActorRef, weatherRequested: WeatherRequested): Receive = {
+    case response: ZMQMessage => {
+      val payload = response.frames(0)
+
+      //FIXME: Remove BASE64 encoding & add proper String conversion or send in binary format (msgpack)
+      val weather = {
+        val base64 = Base64.getDecoder.decode(payload.toArray)
+        unpack[Weather](base64)
+      }
+
+      log.debug("Weather received: {}", weather)
+
+      client ! Right(weather)
+      self ! PoisonPill
+    }
   }
 
 }
@@ -98,8 +74,8 @@ class ZeroMQSupplierConnector(ioThreads: Int, val endpoint: String)(implicit exe
 trait Supplier {
   this: Configuration =>
 
-  implicit def executor: ExecutionContextExecutor
+  val system: ActorSystem
 
-  lazy val supplierConnector: SupplierConnector = new ZeroMQSupplierConnector(config.getInt("zeromq.ioThreads"), config.getString("zeromq.endpoint"))
+  lazy val supplierConnector: SupplierConnector = new ZeroMQSupplierConnector(system, config.getString("zeromq.endpoint"))
 
 }

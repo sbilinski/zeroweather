@@ -1,6 +1,10 @@
 package zeroweather.proxy
 
-import org.scalatest.{ BeforeAndAfterAll, Matchers, GivenWhenThen, WordSpec }
+import java.util.Base64
+
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+import org.scalatest._
 import org.velvia.msgpack._
 import org.zeromq.ZMQ
 import zeroweather.message.{ Weather, WeatherRequested }
@@ -8,12 +12,13 @@ import zeroweather.message.{ Weather, WeatherRequested }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{ Failure, Success }
 
-class ZeroMQSupplierConnectorSpec extends WordSpec with Matchers with GivenWhenThen with BeforeAndAfterAll {
+class ZeroMQSupplierConnectorSpec extends TestKit(ActorSystem("ZeroMQSupplierConnectorSpec")) with WordSpecLike with Matchers with GivenWhenThen with BeforeAndAfterAll {
 
   lazy val endpoint = "tcp://localhost:12345"
-  lazy val connector = new ZeroMQSupplierConnector(1, endpoint)
+  lazy val connector = new ZeroMQSupplierConnector(system, endpoint)
+  lazy val fakeServerContext = ZMQ.context(1)
   lazy val fakeServer = {
-    val socket = connector.context.socket(ZMQ.REP)
+    val socket = fakeServerContext.socket(ZMQ.ROUTER)
     socket.bind(endpoint)
     socket
   }
@@ -29,12 +34,11 @@ class ZeroMQSupplierConnectorSpec extends WordSpec with Matchers with GivenWhenT
   }
 
   override def afterAll() = {
-    fakeServer.close()
-    connector.context.close()
+    system.terminate()
   }
 
   "ZeroMQSupplierConnector" should {
-    "fetch weather using a request-reply pattern" in new Fixtures {
+    "fetch weather using the dealer-router pattern" in new Fixtures {
       Given("a fake server")
       val server = fakeServer
 
@@ -42,9 +46,15 @@ class ZeroMQSupplierConnectorSpec extends WordSpec with Matchers with GivenWhenT
       val futureWeather = connector.fetchWeather(countryCode, city)
 
       And("the server replies")
-      val msg = server.recv()
-      unpack[WeatherRequested](msg) should be(weatherRequested)
-      server.send(pack(weather))
+      val identity = server.recv()
+      val payload = server.recv()
+      val message = unpack[WeatherRequested](Base64.getDecoder.decode(payload))
+
+      message should be(weatherRequested)
+
+      val reply = Base64.getEncoder.encode(pack(weather))
+      server.send(identity, ZMQ.SNDMORE)
+      server.send(reply)
 
       Then("the result should be equal to the expected value")
       futureWeather onComplete {

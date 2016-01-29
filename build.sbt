@@ -19,17 +19,21 @@ lazy val commonSettings = Seq(
   ),
   libraryDependencies ++= {
     val configVersion       = "1.3.0"
+    val akkaVersion         = "2.4.1"
     val msgpack4sVersion    = "0.5.1"
     val jeromqVersion       = "0.3.5"
     val scalaLoggingVersion = "3.1.0"
-    val slf4jVersion        = "1.7.14"
+    val logbackVersion      = "1.1.3"
     val scalaMockVersion    = "3.2.1"
     Seq(
       "com.typesafe"               %   "config"                      % configVersion,
+      "com.typesafe.akka"          %%  "akka-actor"                  % akkaVersion,
+      "com.typesafe.akka"          %%  "akka-slf4j"                  % akkaVersion,
+      "com.typesafe.akka"          %%  "akka-testkit"                % akkaVersion % "test",
       "org.velvia"                 %%  "msgpack4s"                   % msgpack4sVersion,
       "org.zeromq"                 %   "jeromq"                      % jeromqVersion,
       "com.typesafe.scala-logging" %%  "scala-logging"               % scalaLoggingVersion,
-      "org.slf4j"                  %   "slf4j-simple"                % slf4jVersion,
+      "ch.qos.logback"             %   "logback-classic"             % logbackVersion,
       "org.scalamock"              %%  "scalamock-scalatest-support" % scalaMockVersion % "test",
       //Required for IntelliJ ScalaTest integration
       "org.scala-lang.modules"     %%  "scala-xml"                   % "1.0.1" % "test"
@@ -39,7 +43,18 @@ lazy val commonSettings = Seq(
 
 // 
 // Projects
-// 
+//
+lazy val communication = project.in(file("communication"))
+                            .settings(commonSettings: _*)
+                            .settings(SbtScalariform.scalariformSettings: _*)
+                            .settings(
+                              libraryDependencies ++= {
+                                Seq(
+                                  "org.mockito"       %  "mockito-all"   % "1.10.19" % "test"
+                                )
+                              }
+                            )
+
 lazy val message   = project.in(file("message"))
                             .settings(commonSettings: _*)
                             .settings(SbtScalariform.scalariformSettings: _*)
@@ -52,6 +67,7 @@ lazy val proxy     = project.in(file("proxy"))
                               mainClass in Revolver.reStart := Some("zeroweather.proxy.Proxy")
                             )
                             .dependsOn(message)
+                            .dependsOn(communication)
                             .settings(
                               libraryDependencies ++= {
                                 val akkaStreamVersion = "2.0.2"
@@ -71,13 +87,6 @@ lazy val supplier  = project.in(file("supplier"))
                               mainClass in Revolver.reStart := Some("zeroweather.supplier.Supplier")
                             )
                             .dependsOn(message)
-                            .settings(
-                              libraryDependencies ++= {
-                                Seq(
-                                  "com.typesafe.akka" %% "akka-actor" % "2.4.1"
-                                )
-                              }
-                            )
+                            .dependsOn(communication)
 
-
-lazy val root      = project.in(file(".")).aggregate(message, proxy, supplier)
+lazy val root      = project.in(file(".")).aggregate(message, proxy, supplier, communication)

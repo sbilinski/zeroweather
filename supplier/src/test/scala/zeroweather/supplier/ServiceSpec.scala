@@ -1,19 +1,30 @@
 package zeroweather.supplier
 
+import java.util.{ Base64, UUID }
+
+import akka.actor.{ ActorSystem, Props }
+import akka.testkit.TestKit
+import com.ibm.spark.communication.actors.RouterSocketActor
+import com.typesafe.scalalogging.LazyLogging
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{ BeforeAndAfterAll, GivenWhenThen, Matchers, WordSpec }
+import org.scalatest._
 import org.velvia.msgpack._
 import org.zeromq.ZMQ
 import zeroweather.message.{ Weather, WeatherRequested }
 
-class ServiceSpec extends WordSpec with Matchers with GivenWhenThen with MockFactory with BeforeAndAfterAll with Service {
+class ServiceSpec extends TestKit(ActorSystem("ServiceSpec")) with WordSpecLike with Matchers with GivenWhenThen with MockFactory with BeforeAndAfterAll with LazyLogging {
 
-  override val context = ZMQ.context(2)
-  override val endpoint = "tcp://localhost:12345"
-  override val weatherSourceConnector = mock[WeatherSourceConnector]
+  lazy val endpoint = "tcp://localhost:12345"
+  lazy val weatherSourceConnector = mock[WeatherSourceConnector]
 
+  lazy val router = system.actorOf(Props(classOf[RouterActor], weatherSourceConnector))
+  lazy val routerSocket = system.actorOf(Props(classOf[RouterSocketActor], endpoint, router))
+
+  lazy val fakeClientContext = ZMQ.context(1)
   lazy val fakeClient = {
-    val socket = context.socket(ZMQ.REQ)
+    logger.debug(s"Connecting fake ZMQ client to ${endpoint}")
+    val socket = fakeClientContext.socket(ZMQ.DEALER)
+    socket.setIdentity(UUID.randomUUID().toString.getBytes(ZMQ.CHARSET))
     socket.connect(endpoint)
     socket
   }
@@ -29,32 +40,31 @@ class ServiceSpec extends WordSpec with Matchers with GivenWhenThen with MockFac
   }
 
   override def afterAll() = {
-    fakeClient.close()
-    socket.close()
-    context.close()
+    system.terminate()
   }
 
   "Service" should {
 
     "consume incoming request and respond with a weather object" in new Fixtures {
-      Given("a ZeroMQ client")
-      val client = fakeClient
+      Given("the server is initialized")
+      //TODO: Ping actors and Await a reply
+      routerSocket
+      Thread.sleep(1000)
+      logger.warn("Assuming the server is ready")
 
-      And("an initialized server binding")
-      socket.getType
+      And("a ZeroMQ client")
+      val client = fakeClient
 
       And("a fixed weather source response")
       (weatherSourceConnector.fetchWeather _).expects(weatherRequested).returning(weather)
 
       When("the client sends a weather request")
-      client.send(pack(weatherRequested))
-
-      And("the message handler is invoked")
-      handleMessage(false)
+      val request = Base64.getEncoder.encode(pack(weatherRequested))
+      client.send(request)
 
       Then("the client should receive a weather response")
       val res = client.recv()
-      val obj = unpack[Weather](res)
+      val obj = unpack[Weather](Base64.getDecoder.decode(res))
 
       And("the response should be equal to the expected value")
       obj should be(weather)
