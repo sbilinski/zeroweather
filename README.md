@@ -1,10 +1,17 @@
 # Akka HTTP and ZeroMQ 
 
-**TODO**: project description
+The goal of this project is to create a template for efficient [request-reply](http://rfc.zeromq.org/spec:28) communication over **ZeroMQ** in an **Akka** environment. It's a work in progress - contributions and suggestions are more than welcome!
 
 ## Overview
 
 ![Application layout](/doc/zeromq_application_layout.png)
+
+|Module       |Role|
+|-------------|----|
+|proxy        |A RESTful web service for handling user requests.|
+|supplier     |An internal service, which provides data from some external source.|
+|message      |Domain-related messages, which are sent over ZeroMQ.|
+|communication|Socket actors for handling communication over ZeroMQ. Base implementation was taken from the [spark-kernel](https://github.com/ibm-et/spark-kernel) project.|
 
 ## Basic ZeroMQ concepts
 
