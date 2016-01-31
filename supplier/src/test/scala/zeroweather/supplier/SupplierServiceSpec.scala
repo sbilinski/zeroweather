@@ -12,7 +12,7 @@ import org.velvia.msgpack._
 import org.zeromq.ZMQ
 import zeroweather.message.{ Weather, WeatherRequested }
 
-class SupplierServiceSpec extends TestKit(ActorSystem("SupplierServiceSpec")) with WordSpecLike with Matchers with GivenWhenThen with MockFactory with BeforeAndAfterAll with LazyLogging with SupplierService with WeatherSource with Configuration {
+class SupplierServiceSpec extends TestKit(ActorSystem("SupplierServiceSpec")) with WordSpecLike with Matchers with GivenWhenThen with MockFactory with BeforeAndAfterAll with LazyLogging with SupplierService with WeatherSource {
 
   lazy val endpoint = "tcp://localhost:12345"
 

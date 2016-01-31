@@ -50,14 +50,15 @@ class WorkerActor(clientSocket: ActorRef, weatherSourceConnector: WeatherSourceC
 }
 
 trait SupplierService {
-  this: WeatherSource with Configuration =>
-
   val system: ActorSystem
 
-  val router = system.actorOf(Props(classOf[RouterActor], weatherSourceConnector))
-  val routerSocket = system.actorOf(Props(classOf[RouterSocketActor], config.getString("zeromq.endpoint"), router, None))
+  val router: ActorRef
+  val routerSocket: ActorRef
 }
 
 object Supplier extends App with SupplierService with WeatherSource with Configuration {
-  implicit val system = ActorSystem("Supplier")
+  override implicit val system = ActorSystem("Supplier")
+
+  override val router = system.actorOf(Props(classOf[RouterActor], weatherSourceConnector))
+  override val routerSocket = system.actorOf(Props(classOf[RouterSocketActor], config.getString("zeromq.endpoint"), router, None))
 }
