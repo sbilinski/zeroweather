@@ -14,18 +14,20 @@ import scala.collection.JavaConverters._
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.Random
 
 trait SupplierConnector {
   def fetchWeather(countryCode: String, city: String): Future[Either[String, Weather]]
 }
 
-class ZeroMQSupplierConnector(system: ActorSystem, val endpoints: Seq[String]) extends SupplierConnector {
+class ZeroMQSupplierConnector(system: ActorSystem, val endpoints: Seq[String], shuffleEndpoints: Boolean = true) extends SupplierConnector {
   require(!endpoints.isEmpty, "endpoint list must not be empty")
 
   implicit val fetchTimeout = Timeout(2 seconds)
 
   override def fetchWeather(countryCode: String, city: String): Future[Either[String, Weather]] = {
-    val dealer = system.actorOf(Props(classOf[DealerActor], endpoints))
+    val servers = if (shuffleEndpoints) Random.shuffle(endpoints) else endpoints
+    val dealer = system.actorOf(Props(classOf[DealerActor], servers))
 
     (dealer ? WeatherRequested(countryCode, city)).mapTo[Either[String, Weather]]
   }
@@ -107,12 +109,6 @@ class DealerActor(endpoints: Seq[String]) extends Actor with ActorLogging {
   }
 
   private def roundRobin(choices: Seq[String]): Option[String] = choices.headOption
-
-  //TODO: Consider and initial shift of the list and using roundRobin from there
-  //private def randomRobin(choices: Seq[String]): Option[String] = choices match {
-  //  case Nil => None
-  //  case list => Some(list(scala.util.Random.nextInt(list.size)))
-  //}
 
   private def serverSocket(endpoint: String): ActorRef = {
     context.actorOf(Props(classOf[DealerSocketActor], endpoint, self))

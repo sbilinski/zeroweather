@@ -24,7 +24,7 @@ class ZeroMQSupplierConnectorSpec extends TestKit(ActorSystem("ZeroMQSupplierCon
     socket
   }
 
-  def serverConnector(endpoints: String*) = new ZeroMQSupplierConnector(system, endpoints)
+  def serverConnector(endpoints: String*) = new ZeroMQSupplierConnector(system, endpoints, shuffleEndpoints = false)
 
   sealed trait Fixtures {
     val timestamp = 12345
