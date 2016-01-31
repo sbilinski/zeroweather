@@ -7,3 +7,4 @@ module.
 * All `KernelMessage` references were removed.
 * All `security` components were removed.
 * Fixed inbound message processing for the `PUB` socket.
+* `ROUTER` sockets/actors can be created with an identity.

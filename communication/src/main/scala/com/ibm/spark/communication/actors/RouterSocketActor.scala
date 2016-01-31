@@ -26,14 +26,15 @@ import org.zeromq.ZMQ
  *
  * @param connection The address to bind to
  * @param listener The actor to send incoming messages back to
+ * @param identity The socket identity
  */
-class RouterSocketActor(connection: String, listener: ActorRef)
+class RouterSocketActor(connection: String, listener: ActorRef, identity: Option[String])
     extends Actor with LazyLogging {
   logger.debug(s"Initializing router socket actor for $connection")
   private val manager: SocketManager = new SocketManager
   private val socket = manager.newRouterSocket(connection, (message: Seq[String]) => {
     listener ! ZMQMessage(message.map(ByteString.apply): _*)
-  })
+  }, identity)
 
   override def postStop(): Unit = {
     manager.closeSocket(socket)

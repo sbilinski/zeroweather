@@ -18,7 +18,7 @@ class ServiceSpec extends TestKit(ActorSystem("ServiceSpec")) with WordSpecLike 
   lazy val weatherSourceConnector = mock[WeatherSourceConnector]
 
   lazy val router = system.actorOf(Props(classOf[RouterActor], weatherSourceConnector))
-  lazy val routerSocket = system.actorOf(Props(classOf[RouterSocketActor], endpoint, router))
+  lazy val routerSocket = system.actorOf(Props(classOf[RouterSocketActor], endpoint, router, None))
 
   lazy val fakeClientContext = ZMQ.context(1)
   lazy val fakeClient = {

@@ -149,19 +149,22 @@ class SocketManager {
    *
    * @param address The address to associate with the socket
    * @param inboundMessageCallback The callback to use for incoming messages
+   * @param identity identity of the socket
    *
    * @return The new socket instance
    */
   def newRouterSocket(
     address: String,
-    inboundMessageCallback: (Seq[String]) => Unit
+    inboundMessageCallback: (Seq[String]) => Unit,
+    identity: Option[String] = None
   ): SocketLike = withNewContext { ctx =>
+    val identityOption = identity.map(id => Identity(id.getBytes(ZMQ.CHARSET)))
+    val socketOptions = List(Bind(address), Linger(0)) ++ identityOption.toList
     new JeroMQSocket(new ZeroMQSocketRunnable(
       ctx,
       RouterSocket,
       Some(inboundMessageCallback),
-      Bind(address),
-      Linger(0)
+      socketOptions: _*
     ))
   }
 

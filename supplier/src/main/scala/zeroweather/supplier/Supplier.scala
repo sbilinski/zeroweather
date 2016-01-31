@@ -54,5 +54,5 @@ object Supplier extends App with WeatherSource with Configuration {
   implicit val system = ActorSystem("Supplier")
 
   val router = system.actorOf(Props(classOf[RouterActor], weatherSourceConnector))
-  val routerSocket = system.actorOf(Props(classOf[RouterSocketActor], config.getString("zeromq.endpoint"), router))
+  val routerSocket = system.actorOf(Props(classOf[RouterSocketActor], config.getString("zeromq.endpoint"), router, None))
 }
