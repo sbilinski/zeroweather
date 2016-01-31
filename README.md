@@ -1,6 +1,8 @@
-# Akka HTTP and ZeroMQ 
+# ZeroWeather
 
-The goal of this project is to create a template for efficient [request-reply](http://rfc.zeromq.org/spec:28) communication over **ZeroMQ** in an **Akka** environment. It's a work in progress - contributions and suggestions are more than welcome!
+The goal of this project is to provide a template for a [brokerless](http://zguide.zeromq.org/php:all#Brokerless-Reliability-Freelance-Pattern) [ZeroMQ](http://zeromq.org/) communication system, which is based on [Akka](http://akka.io/) and [Scala](http://www.scala-lang.org/) at its core.
+
+The **akka-zeromq** extension was [removed](https://github.com/akka/akka/issues/16636) from **Akka** in a recent release. Check the project [roadmap](https://www.typesafe.com/blog/akka-roadmap-update-2014) for an explanation of this decision and a summary of the known issues. For this reason, this project was built on [JeroMQ](https://github.com/zeromq/jeromq) (a pure Java implementation of ZeroMQ) and a [spark-kernel](https://github.com/ibm-et/spark-kernel) module, which was [rolled out](https://github.com/akka/akka/issues/16636) as an **akka-zeromq** replacement. This may be subject to change, since the communication module isn't available as a standalone library at the moment and some [minor changes](communication/README.md) were applied on it as well.
 
 ## Overview
 
@@ -11,23 +13,11 @@ The goal of this project is to create a template for efficient [request-reply](h
 |proxy        |A RESTful web service for handling user requests.|
 |supplier     |An internal service, which provides data from some external source.|
 |message      |Domain-related messages, which are sent over ZeroMQ.|
-|communication|Socket actors for handling communication over ZeroMQ. Base implementation was taken from the [spark-kernel](https://github.com/ibm-et/spark-kernel) project.|
+|communication|Socket actors for handling communication over ZeroMQ. Base implementation was taken from the **spark-kernel** project.|
 
-## Basic ZeroMQ concepts
+## Deployment
 
-Check the [socket](http://api.zeromq.org/4-1:zmq-socket) man page for full contract description.
- 
-A `DEALER` socket is defined as follows:
-
-> A socket of type ZMQ_DEALER is an advanced pattern used for extending request/reply sockets. Each message sent is round-robined among all connected peers, and each message received is fair-queued from all connected peers.
-  
-A `ROUTER` socket is defined as follows:
-
-> A socket of type ZMQ_ROUTER is an advanced socket type used for extending request/reply sockets. When receiving messages a ZMQ_ROUTER socket shall prepend a message part containing the identity of the originating peer to the message before passing it to the application. Messages received are fair-queued from among all connected peers. When sending messages a ZMQ_ROUTER socket shall remove the first part of the message and use it to determine the identity of the peer the message shall be routed to.
-
-We're going to use a `DEALER` socket within the **proxy** app and a `ROUTER` socket for the **supplier** app.
-
-## Development mode
+### Development mode
 
 For rapid development feedback use the [sbt-revolver](https://github.com/spray/sbt-revolver) plugin. To start the **supplier** process:
 
@@ -37,3 +27,13 @@ To start the **proxy** process:
 
     sbt ~proxy/re-start
 
+### Testing a distributed setup
+
+To start a **proxy** process with explicit binding and an endpoint list:
+
+    sbt -Dhttp.port=8080 -Dzeromq.endpoints.0=tcp://localhost:5555 -Dzeromq.endpoints.1=tcp://localhost:5556 proxy/run
+    
+To start a **supplier** process with explicit binding:
+
+    sbt -Dzeromq.endpoint=tcp://localhost:5555 supplier/run
+    
