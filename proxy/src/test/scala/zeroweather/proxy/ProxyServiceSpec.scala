@@ -10,7 +10,7 @@ import zeroweather.message.Weather
 
 import scala.concurrent.Future
 
-class ServiceSpec extends WordSpec with Matchers with MockFactory with ScalatestRouteTest with Service {
+class ProxyServiceSpec extends WordSpec with Matchers with MockFactory with ScalatestRouteTest with ProxyService {
 
   sealed trait Fixtures {
     val timestamp = 12345
@@ -23,7 +23,7 @@ class ServiceSpec extends WordSpec with Matchers with MockFactory with Scalatest
 
   override val supplierConnector = mock[SupplierConnector]
 
-  "Service" should {
+  "ProxyService" should {
 
     "fetch weather for a given city and country" in new Fixtures {
       (supplierConnector.fetchWeather _).expects(countryCode, city).returning(Future.successful(Right(weather)))

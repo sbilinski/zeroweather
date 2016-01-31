@@ -18,7 +18,7 @@ trait Protocols extends DefaultJsonProtocol {
   implicit val weatherFormat = jsonFormat4(Weather.apply)
 }
 
-trait Service extends Protocols {
+trait ProxyService extends Protocols {
   implicit val system: ActorSystem
   implicit def executor: ExecutionContextExecutor
   implicit val materializer: Materializer
@@ -48,7 +48,7 @@ trait Service extends Protocols {
   }
 }
 
-object Proxy extends App with Service with Supplier with Configuration {
+object Proxy extends App with ProxyService with Supplier with Configuration {
   override implicit val system = ActorSystem("Proxy")
   override implicit val executor = system.dispatcher
   override implicit val materializer = ActorMaterializer()

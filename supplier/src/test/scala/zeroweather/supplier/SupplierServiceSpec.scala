@@ -12,13 +12,14 @@ import org.velvia.msgpack._
 import org.zeromq.ZMQ
 import zeroweather.message.{ Weather, WeatherRequested }
 
-class ServiceSpec extends TestKit(ActorSystem("ServiceSpec")) with WordSpecLike with Matchers with GivenWhenThen with MockFactory with BeforeAndAfterAll with LazyLogging {
+class SupplierServiceSpec extends TestKit(ActorSystem("SupplierServiceSpec")) with WordSpecLike with Matchers with GivenWhenThen with MockFactory with BeforeAndAfterAll with LazyLogging with SupplierService with WeatherSource with Configuration {
 
   lazy val endpoint = "tcp://localhost:12345"
-  lazy val weatherSourceConnector = mock[WeatherSourceConnector]
 
-  lazy val router = system.actorOf(Props(classOf[RouterActor], weatherSourceConnector))
-  lazy val routerSocket = system.actorOf(Props(classOf[RouterSocketActor], endpoint, router, None))
+  override lazy val weatherSourceConnector = mock[WeatherSourceConnector]
+
+  override val router = system.actorOf(Props(classOf[RouterActor], weatherSourceConnector))
+  override val routerSocket = system.actorOf(Props(classOf[RouterSocketActor], endpoint, router, None))
 
   lazy val fakeClientContext = ZMQ.context(1)
   lazy val fakeClient = {
@@ -48,7 +49,6 @@ class ServiceSpec extends TestKit(ActorSystem("ServiceSpec")) with WordSpecLike 
     "consume incoming request and respond with a weather object" in new Fixtures {
       Given("the server is initialized")
       //TODO: Ping actors and Await a reply
-      routerSocket
       Thread.sleep(1000)
       logger.warn("Assuming the server is ready")
 
