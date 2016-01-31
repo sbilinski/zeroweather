@@ -11,8 +11,6 @@ import org.velvia.msgpack._
 import org.zeromq.ZMQ
 import zeroweather.message.{ Weather, WeatherRequested }
 
-import scala.util.{ Failure, Success }
-
 class ZeroMQSupplierConnectorSpec extends TestKit(ActorSystem("ZeroMQSupplierConnectorSpec")) with WordSpecLike with Matchers with GivenWhenThen with BeforeAndAfterAll with ScalaFutures {
 
   implicit val patience = PatienceConfig(Span(3, Seconds))

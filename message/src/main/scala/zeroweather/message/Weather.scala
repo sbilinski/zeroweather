@@ -5,9 +5,10 @@ case class Weather(timestamp: Long, countryCode: String, city: String, temperatu
 object Weather {
   //TODO: Replace with case class codecs once the new release of msgpack4s is published
   import java.io.{ DataInputStream, DataOutputStream }
-  import org.velvia.msgpack._
-  import org.velvia.msgpack.SimpleCodecs._
+
   import org.velvia.msgpack.RawStringCodecs._
+  import org.velvia.msgpack.SimpleCodecs._
+  import org.velvia.msgpack._
 
   implicit object WeatherMsgPackCodec extends Codec[zeroweather.message.Weather] {
     def pack(out: DataOutputStream, item: Weather) = {

@@ -9,7 +9,6 @@ import com.ibm.spark.communication.actors.RouterSocketActor
 import org.velvia.msgpack._
 import zeroweather.message.WeatherRequested
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class RouterActor(weatherSourceConnector: WeatherSourceConnector) extends Actor with ActorLogging {
